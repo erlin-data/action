@@ -1,0 +1,68 @@
+name: fetch
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "选择"
+        required: true
+        default: "data"
+        type: choice
+        options:
+          - "data"  
+          - "std" 
+      invert:
+        description: "1=正常过滤 0=取反(-v)"
+        required: false
+        default: "1"
+
+concurrency:
+  group: ${{ github.repository }}
+  cancel-in-progress: false # 等待运行跑完
+
+permissions:
+  actions: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: public
+      uses: actions/checkout@v6
+
+    # 1. 动态判断应该取哪一个 Secret
+    # 如果选了 data，就拿 secrets.REPO_URL；否则拿 secrets.REPO_URL_2
+    - name: origin
+      run: git clone --depth 1 ${{ secrets[inputs.target == 'data' && 'REPO_URL' || 'REPO_URL_2'] }} origin
+
+    - name: Setup python
+      uses: actions/setup-python@master
+      with:
+        python-version: '3.10'
+        cache: pip
+
+    - name: require
+      run: cd origin && pip install -r requirements.txt --prefer-binary
+
+    - name: fetch
+      run: |
+        cd origin
+        python ${{ inputs.target }}.py | grep ${{ inputs.invert == '0' && '-v' || '' }} "^@Page" || true
+
+    - name: Commit & push
+      run: |
+        cd origin
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add .
+        git commit -am "Update from ${{ github.repository }} $(TZ='Asia/Shanghai' date '+%D %T')" || echo "No changes"
+        git push origin main > /dev/null 2>&1 && echo "Push done!"
+
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        retain_days: 0
+        keep_minimum_runs: 3
