@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: pull
-        run: git clone --depth 1 "${{ secrets[inputs.target] }}" origin
+        run: git clone --depth 1 ${{ secrets[inputs.target] }} origin
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
