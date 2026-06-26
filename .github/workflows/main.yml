@@ -6,7 +6,7 @@ on:
       target:
         description: 选择目标（DATA 或 STD）
         required: true
-        default: DATA
+        default: STD
         type: choice
         options:
           - DATA
